@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "bbmp"
+  site-url: "https://bkowshik.github.io/bbmp"
+  description: "Bruhat Bengaluru Mahanagara Palike (BBMP)"
+  repo-branch: main
+  repo-url: "https://github.com/bkowshik/bbmp"
