@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://bkowshik.github.io',
                 'git_url': 'https://github.com/bkowshik/bbmp',
                 'lib_path': 'bbmp'},
-  'syms': {'bbmp.core': {'bbmp.core.foo': ('core.html#foo', 'bbmp/core.py')}}}
+  'syms': {'bbmp.core': {'bbmp.core.say_hello': ('bbmp.html#say_hello', 'bbmp/core.py')}}}
