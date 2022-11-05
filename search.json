@@ -1,0 +1,51 @@
+[
+  {
+    "objectID": "bbmp.html",
+    "href": "bbmp.html",
+    "title": "bbmp",
+    "section": "",
+    "text": "source\n\nsay_hello\n\n say_hello (to)\n\nSay hello to somebody.\n\nsay_hello('world')\n\n'Hello, world!'"
+  },
+  {
+    "objectID": "electoral_rolls_2022/parse_electoral_rolls.html",
+    "href": "electoral_rolls_2022/parse_electoral_rolls.html",
+    "title": "Parse Electoral Rolls, 2022",
+    "section": "",
+    "text": "The final electoral rolls for the 2022 BBMP elections were uploaded on the website http://knowyourbooth.in/ in a large number of PDF files. With this notebook, we want to explore parsing these PDF files to convert them into easy to search and manage CSV files. Below are the steps in the workflow:\n\n\nOn the page http://knowyourbooth.in/Final use the filters for District, Assembly and Ward to get electoral rolls for all part numbers in a ward. The image below lists all the electoral rolls in ward 240 Vinayakanagar.\n\n\n\n\nPost clicking on the required electoral roll, the page reloads with a Captcha which needs to be filled post which cllicking on the Click to View PDF will download the electoral rolls for the part number of choice as a PDF file.\n\n\n\n\nBelow is how the first page looks like with the actual electoral rolls on subsequent pages.\n\nFrom a structure of the dataset point of view, the hierarcy is below. Which means, one way to name the downloaded electoral rolls is in a simular format to reflect this structure, ac75_w240_pn1.pdf 1. Assembly constituency: 75 2. Ward: 240 3. Part number: 1"
+  },
+  {
+    "objectID": "electoral_rolls_2022/parse_electoral_rolls.html#dependencies",
+    "href": "electoral_rolls_2022/parse_electoral_rolls.html#dependencies",
+    "title": "Parse Electoral Rolls, 2022",
+    "section": "Dependencies",
+    "text": "Dependencies\n\npoppler/poppler: Rendering PDF files and examining or modifying their structure.\nBelval/pdf2image: Convert PDF to a PIL Image object.\nmadmaze/pytesseract: Optical character recognition (OCR) tool.\n\n\nfrom pathlib import Path\n\nimport numpy as np\nimport matplotlib.pyplot as plt\n\nfrom PIL import Image, ImageOps\nfrom pdf2image import convert_from_path\nfrom pytesseract import pytesseract\n\n\n# Read one of the PDF files with electoral rolls.\nelectoral_rolls = convert_from_path('./pdfs/ac151_w90_pn1.pdf', dpi=500, fmt='jpg')\nprint('Number of pages in the PDF: {}'.format(len(electoral_rolls)))\n\nNumber of pages in the PDF: 62\n\n\n\ndef clean_image(image):\n    \"\"\"Clean an image for better OCR detection.\n    \n    Ref: https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html\n    \"\"\"\n    \n    # Counter the images into a numpy array.\n    pixels = np.array(image)\n    \n    # Binarization of the pixels to improve OCR detection.\n    threshold = 120\n    pixels[pixels > threshold] = 255 # Set all pixels greater than the threshold to white.\n    pixels[pixels < threshold] = 0 # Set all pixels less than the threshold to black.\n\n    return pixels\n\n# Cleanup the image and extra text from the image using Tesseract.\ntext = pytesseract.image_to_string(clean_image(electoral_rolls[2]))\nprint(text[:250])\n\nBruhat Bengaluru Mahanagara Pallke\n\nWard No. and Name: 90 - Mahadevapura\n\nSection i= Ralhvay Quarters.\n\nName: APSHA\n\nHusband\nName: MOHAMMED AK BAR\n\nHause Ma.:\nAge: 66 Sex: Female\n\nName: K Murugan\n\nFather\n\nHause Na. 0\nAge: 61 Sex: Male\n\nName: OD Ravik"
+  },
+  {
+    "objectID": "electoral_rolls_2022/parse_electoral_rolls.html#structured-pdf",
+    "href": "electoral_rolls_2022/parse_electoral_rolls.html#structured-pdf",
+    "title": "Parse Electoral Rolls, 2022",
+    "section": "Structured PDF",
+    "text": "Structured PDF\nOCR detection on the PDF file is able to extract the voter details like name, gender, etc but not the EPIC number, the primary challenge being the underline below the EPIC number. One solution to this problem is to cleanup the area around the EPIC number with appropriate padding so that OCR detection is done in a low-noise environment.\n\n\n\n\n\n\n\n\nInput\nImage\nOCR detection\n\n\n\n\nRaw\n\n7\n\n\nCropped + Padded\n\nWaJES58865\n\n\nManual review\n-\nUZJ6358865\n\n\n\nNOTE: The OCR after the crop + pad step is not right, but it’s significantly better when compared to the detection on the raw image.\n\ndef crop_image(image, original=False):\n    \"\"\"Crop image to work with parts of a large image.\n    \n    WIP: Only one voter details are currently cropped and returned.\n    \"\"\"\n    \n    # The amount of padding around the EPIC number.\n    padding = 100\n    \n    # Convert the image into a numpy array.\n    pixels = np.array(image)\n    \n    # Return the original image without the careful cropping and padding.\n    if original:\n        cropped_image = pixels[490-padding:540+padding, 1060-padding:1360+padding, :]\n        return cropped_image\n    \n    # Step 1. Extract the exact location of the EPIC number.\n    cropped_image = pixels[490:540, 1060:1360, :]\n    \n    # Step 2. Add extra padding on the top and bottom.\n    cropped_image = np.concatenate([\n        pixels[:padding, 1060:1360, :],\n        cropped_image,\n        pixels[:padding, 1060:1360, :]\n    ], axis=0)\n    \n    # Step 3. Add extra padding on the left and right.\n    cropped_image = np.concatenate([\n        pixels[:cropped_image.shape[0], :padding, :],\n        cropped_image,\n        pixels[:cropped_image.shape[0], :padding, :]\n    ], axis=1)\n    \n    return cropped_image\n\n# Get the cropped image in the original form.\nimage_before = Image.fromarray(crop_image(clean_image(electoral_rolls[2]), original=True))\nimage_before.save(Path(Path.home(), 'Desktop/before.png'))\n\n# Get the cropped image in the cleaned up form.\nimage_after = Image.fromarray(crop_image(clean_image(electoral_rolls[2]), original=False))\nimage_after.save(Path(Path.home(), 'Desktop/after.png'))\n\n# Combine the two images into one image for top-down comparison with a border for understanding.\nimage = Image.fromarray(np.concatenate([np.array(image_before), np.array(image_after)], axis=1))\nimage\n\n\n\n\n\n# What are the OCR extracts for the two images, before and after! 🎉\nprint('{}, {}'.format(\n    pytesseract.image_to_string(clean_image(image_before)).strip(),\n    pytesseract.image_to_string(clean_image(image_after)).strip()\n))\n\n7, WaJES58865"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "bbmp",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation."
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "bbmp",
+    "section": "Install",
+    "text": "Install\npip install bbmp"
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "bbmp",
+    "section": "How to use",
+    "text": "How to use\nFill me in please! Don’t forget code examples:\n\n1+1\n\n2"
+  }
+]
